@@ -14,25 +14,44 @@ pipeline {
       }
     }
 
-    stage('Unit Test & Build (Docker)') {
+    stage('Docker Build (Unit Tests + Build)') {
       steps {
         sh '''
-          echo "Running unit tests and build inside Docker..."
+          echo "Docker build started (no ports exposed)..."
           docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
         '''
+      }
+    }
+
+    stage('SonarQube Analysis') {
+      steps {
+        withSonarQubeEnv('sonarqube') {
+          sh '''
+            mvn sonar:sonar \
+              -Dsonar.projectKey=petclinic \
+              -Dsonar.projectName=petclinic \
+              -Dsonar.sources=src \
+              -Dsonar.java.binaries=target
+          '''
+        }
+      }
+    }
+
+    stage('Quality Gate') {
+      steps {
+        timeout(time: 2, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
       }
     }
   }
 
   post {
-    always {
-      echo "CI run finished"
-    }
     success {
-      echo "✅ Build & unit tests passed without port conflicts"
+      echo "✅ Build + Unit Tests + SonarQube passed (no port conflicts)"
     }
     failure {
-      echo "❌ Build or unit tests failed"
+      echo "❌ Pipeline failed"
     }
   }
 }
