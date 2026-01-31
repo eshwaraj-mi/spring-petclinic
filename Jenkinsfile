@@ -22,14 +22,15 @@ pipeline {
       }
     }
 
-    stage('Run Container Validation') {
-      steps {
-        sh '''
-          docker run -d -p 8080:8080 ${IMAGE_NAME}:${IMAGE_TAG}
-          sleep 20
-          docker ps | grep ${IMAGE_NAME}
-        '''
-      }
+  stage('Run Container Validation') {
+  steps {
+    sh '''
+      docker run -d --name petclinic-test ${IMAGE_NAME}:${IMAGE_TAG}
+      sleep 15
+      docker ps | grep petclinic-test
+    '''
+  }
+}
     }
   }
 
