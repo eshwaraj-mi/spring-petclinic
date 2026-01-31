@@ -7,7 +7,46 @@ pipeline {
   }
 
   stages {
+pipeline {
+  agent any
 
+  environment {
+    IMAGE_NAME = "petclinic"
+    IMAGE_TAG  = "${BUILD_NUMBER}"
+    SONAR_HOST = "http://<BASTION_PRIVATE_IP>:9000"
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Docker Build + Unit Tests + Sonar') {
+      steps {
+        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+          sh '''
+            docker build \
+              --build-arg SONAR_HOST_URL=${SONAR_HOST} \
+              --build-arg SONAR_TOKEN=${SONAR_TOKEN} \
+              -t ${IMAGE_NAME}:${IMAGE_TAG} .
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Build + Unit Tests + Sonar completed (all inside Docker)"
+    }
+    failure {
+      echo "❌ Build / Tests / Sonar failed"
+    }
+  }
+}
     stage('Checkout') {
       steps {
         checkout scm
