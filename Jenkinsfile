@@ -38,6 +38,11 @@ pipeline {
     always {
       sh 'docker ps -aq | xargs -r docker rm -f'
     }
+    post {
+  always {
+    sh 'docker rm -f petclinic-test || true'
+  }
+}
     success {
       echo "✅ CI pipeline completed successfully"
     }
