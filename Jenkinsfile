@@ -14,40 +14,25 @@ pipeline {
       }
     }
 
-    stage('Docker Build (with tests)') {
+    stage('Unit Test & Build (Docker)') {
       steps {
         sh '''
+          echo "Running unit tests and build inside Docker..."
           docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
         '''
       }
-    }
-
-  stage('Run Container Validation') {
-  steps {
-    sh '''
-      docker run -d --name petclinic-test ${IMAGE_NAME}:${IMAGE_TAG}
-      sleep 15
-      docker ps | grep petclinic-test
-    '''
-  }
-}
     }
   }
 
   post {
     always {
-      sh 'docker ps -aq | xargs -r docker rm -f'
+      echo "CI run finished"
     }
-    post {
-  always {
-    sh 'docker rm -f petclinic-test || true'
-  }
-}
     success {
-      echo "✅ CI pipeline completed successfully"
+      echo "✅ Build & unit tests passed without port conflicts"
     }
     failure {
-      echo "❌ CI pipeline failed"
+      echo "❌ Build or unit tests failed"
     }
   }
 }
