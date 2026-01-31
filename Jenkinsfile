@@ -1,6 +1,11 @@
 pipeline {
   agent any
 
+  environment {
+    IMAGE_NAME = "petclinic"
+    IMAGE_TAG  = "${BUILD_NUMBER}"
+  }
+
   stages {
 
     stage('Checkout') {
@@ -9,22 +14,34 @@ pipeline {
       }
     }
 
-    stage('Unit Tests') {
+    stage('Docker Build (with tests)') {
       steps {
-        sh 'mvn test'
+        sh '''
+          docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+        '''
       }
     }
 
-    stage('Build Jar') {
+    stage('Run Container Validation') {
       steps {
-        sh 'mvn clean package -DskipTests'
+        sh '''
+          docker run -d -p 8080:8080 ${IMAGE_NAME}:${IMAGE_TAG}
+          sleep 20
+          docker ps | grep ${IMAGE_NAME}
+        '''
       }
     }
+  }
 
-    stage('Docker Build') {
-      steps {
-        sh 'docker build -t petclinic:${BUILD_NUMBER} .'
-      }
+  post {
+    always {
+      sh 'docker ps -aq | xargs -r docker rm -f'
+    }
+    success {
+      echo "✅ CI pipeline completed successfully"
+    }
+    failure {
+      echo "❌ CI pipeline failed"
     }
   }
 }
