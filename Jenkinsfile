@@ -4,7 +4,9 @@ pipeline {
   environment {
     IMAGE_NAME = "petclinic"
     IMAGE_TAG  = "${BUILD_NUMBER}"
-    SONAR_HOST = "http://http://13.127.182.72:9000"
+    AWS_REGION = "ap-south-1"
+    ECR_REPO   = "123456789012.dkr.ecr.ap-south-1.amazonaws.com/petclinic"
+    SONAR_HOST = "http://<BASTION_PRIVATE_IP>:9000"
   }
 
   stages {
@@ -31,7 +33,6 @@ pipeline {
     stage('Trivy Image Scan') {
       steps {
         sh '''
-          echo "Running Trivy vulnerability scan..."
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:latest image \
@@ -41,14 +42,26 @@ pipeline {
         '''
       }
     }
+
+    stage('Push Image to AWS ECR') {
+      steps {
+        sh '''
+          aws ecr get-login-password --region ${AWS_REGION} \
+          | docker login --username AWS --password-stdin ${ECR_REPO}
+
+          docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPO}:${IMAGE_TAG}
+          docker push ${ECR_REPO}:${IMAGE_TAG}
+        '''
+      }
+    }
   }
 
   post {
     success {
-      echo "✅ Build, Sonar & Trivy security scan passed"
+      echo "✅ PHASE 4 complete: Image pushed to AWS ECR"
     }
     failure {
-      echo "❌ Pipeline failed (build / quality / security)"
+      echo "❌ Pipeline failed"
     }
   }
 }
